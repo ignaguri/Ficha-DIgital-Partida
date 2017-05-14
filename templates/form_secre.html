@@ -1,0 +1,16 @@
+<form id="form_secre" name="form_secre" class="form-horizontal" method="post" action="<?php echo htmlspecialchars($_SERVER[\'PHP_SELF\']); ?>">
+    <input type="hidden" name="persona" value="rol_secre">
+    <div class="form-group">
+        <label class="control-label" for="dni">DNI</label>
+        <input type="text" name="dni" id="dni" class="form-control"/>
+        <br class="clear"/>
+    </div>
+    <div class="form-group">
+        <label class="control-label" for="comentarios">Comentarios</label>
+        <textarea class="form-control" name="comentarios" id="comentarios" cols="45" rows="5"></textarea>
+        <br class="clear"/>
+    </div>
+    <div class="form-group">
+        <button type="submit" id="btn_submit_rol" class="btn btn-block btn-success">Registrar datos</button>
+    </div>
+</form>
