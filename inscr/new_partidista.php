@@ -37,13 +37,16 @@ if (isset($_GET['status']) && $_GET['status'] == 'loggedout') {
     $membership->log_User_Out();
 }
 
+$datosPadrino = $new_user->getDatosPadrino($_SESSION['persona']);
+
+
 if ($_POST && $_POST['persona'] == 'rol_partidista') {
 
     $datos_rol = $utils->sanitizeData('rol_partidista', $_POST);
     $flag = $new_user->new_rol_data(4, $datos_rol);
 
     if ($flag)
-        $membership->redirectUser($_SESSION['rol']);
+        $membership->redirectNewUser($_SESSION['rol']);
 }
 
 ?>
@@ -56,12 +59,15 @@ if ($_POST && $_POST['persona'] == 'rol_partidista') {
                 <input class="form-control" type="hidden" name="persona" value="rol_partidista">
                 <div class="page-header">
                     <h1>Registrarse como <em>partidista</em></h1>
-                    <br />
-                    <h1><small>Ingresá tus datos</small></h1>
+                    <p>Tu padrino es:
+                    <span class="label label-primary">
+                        <?php echo $datosPadrino[1]. ', '. $datosPadrino[2]. ' (DNI: '.$datosPadrino[0].')';?>
+                    </span></p>
                 </div>
                 <div class="form-group">
+                    <h2>Tus datos</h2>
                     <label for="dni">DNI</label>
-                    <input class="form-control" type="text" name="dni" id="dni" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'xx.xxx.xxx' ?>" readonly/>
+                    <input class="form-control" type="text" name="dni" id="dni" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'Si estas viendo esto, hubo un error' ?>" value="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: -1 ?>" readonly/>
                     <br class="clear"/>
                 </div>
                 <div class="form-group">
@@ -160,7 +166,7 @@ if ($_POST && $_POST['persona'] == 'rol_partidista') {
     </div>
 </div>
 
-<a id="logout" href="login.php?status=loggedout">Salir</a>
+<a id="logout" href="../login.php?status=loggedout">Salir</a>
 
 </body>
 </html>

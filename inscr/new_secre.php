@@ -42,7 +42,7 @@ if ($_POST && $_POST['persona'] == 'rol_secre') {
     $flag = $new_user->new_rol_data(2, $datos_rol);
 
     if ($flag)
-        $membership->redirectUser($_SESSION['rol']);
+        $membership->redirectNewUser(2);
 }
 
 ?>
@@ -60,7 +60,7 @@ if ($_POST && $_POST['persona'] == 'rol_secre') {
                 </div>
                 <div class="form-group">
                     <label class="control-label" for="dni">Tu DNI</label>
-                    <input type="text" name="dni" id="dni" class="form-control" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'xx.xxx.xxx' ?>" readonly/>
+                    <input type="text" name="dni" id="dni" class="form-control" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'Si estas viendo esto, hubo un error' ?>" value="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: -1 ?>" readonly/>
                     <br class="clear"/>
                 </div>
                 <div class="form-group">
@@ -76,7 +76,7 @@ if ($_POST && $_POST['persona'] == 'rol_secre') {
     </div>
 </div>
 
-<a id="logout" href="login.php?status=loggedout">Salir</a>
+<a id="logout" href="../login.php?status=loggedout">Salir</a>
 
 </body>
 </html>

@@ -8,15 +8,25 @@ class Membership {
         $mysql = New Mysql();
         $idRol = $mysql->verify_Username_and_Pass($dni, md5($pwd));
 
-        if ($idRol != null) {
-            $_SESSION['status'] = 'authorized';
-            $_SESSION['rol'] = $idRol;
-            $_SESSION['persona'] = $dni;
-            $_SESSION['new_user'] = false;
-            $this->redirectUser($idRol);
-        } else {
+        if ($idRol != null){
+            if($mysql->datosCompletos($dni, $idRol)) {
+                $_SESSION['status'] = 'authorized';
+                $_SESSION['rol'] = $idRol;
+                $_SESSION['persona'] = $dni;
+                $_SESSION['new_user'] = false;
+                $this->redirectUser($idRol);
+            }
+            else
+            {
+                $_SESSION['status'] = 'authorized';
+                $_SESSION['rol'] = $idRol;
+                $_SESSION['persona'] = $dni;
+                $_SESSION['new_user'] = false;
+                $this->redirectUncompleteUser($idRol);
+            }
+        } else
             return "La clave ingresada no es correcta.";
-        }
+
     }
 
     function validate_newUser($pwd) {
@@ -55,6 +65,55 @@ class Membership {
                     header("location: new_user.php");
                 else
                     header("location: partidista.php");
+                break;
+            default:
+                header("location: login.php");
+                break;
+        }
+    }
+
+    function redirectNewUser($idRol) {
+        switch ($idRol) {
+            case 1:
+                header("location: index.php");
+                break;
+            case 2:
+                if($_SESSION['new_user'] == true)
+                    header("location: new_user.php");
+                else
+                    header("location: ../secre.php");
+                break;
+            case 3:
+                if($_SESSION['new_user'] == true)
+                    header("location: new_user.php");
+                else
+                    header("location: ../padrino.php");
+                break;
+            case 4:
+                if($_SESSION['new_user'] == true)
+                    header("location: new_user.php");
+                else
+                    header("location: ../partidista.php");
+                break;
+            default:
+                header("location: login.php");
+                break;
+        }
+    }
+
+    function redirectUncompleteUser($idRol){
+        switch ($idRol) {
+            case 1:
+                header("location: index.php");
+                break;
+            case 2:
+                    header("location: inscr/new_secre.php");
+                break;
+            case 3:
+                    header("location: inscr/new_padrino.php");
+                break;
+            case 4:
+                    header("location: inscr/new_partidista.php");
                 break;
             default:
                 header("location: login.php");

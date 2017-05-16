@@ -2,8 +2,8 @@
 
 require_once (__DIR__. '/classes/Membership.php');
 $membership = New Membership();
-//$rolNeeded = 2;
-$rolNeeded = 1;
+$rolNeeded = 2;
+//$rolNeeded = 1;
 $membership->confirm_Member($rolNeeded);
 
 ?>

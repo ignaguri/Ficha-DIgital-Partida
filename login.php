@@ -20,20 +20,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $gender = test_input($_POST["gender"]);
 }
 */
-function test_input($data) {
+function test_input($data)
+{
     $data = trim($data);
     $data = stripslashes($data);
     $data = htmlspecialchars($data);
     return $data;
 }
+
 //-------------------------------
 
 // Did the user enter a password/username and click submit?
 if ($_POST && !empty($_POST['pwd'])) {
-    if($_POST['dni']) {
-        $response = $membership->validate_User(test_input($_POST['dni']),test_input($_POST['pwd']));
-    }
-    else {
+    if ($_POST['dni']) {
+        $response = $membership->validate_User(test_input($_POST['dni']), test_input($_POST['pwd']));
+    } else {
         $response = $membership->validate_newUser(test_input($_POST['pwd']));
     }
 }
@@ -64,20 +65,24 @@ if ($_POST && !empty($_POST['pwd'])) {
     <div class="row">
         <div class="col-md-6 col-md-offset-3">
             <div>
-                <h1 class="text-center" style="background-color: rgba(255,255,255,0.8)"><strong>Ficha Digital - Partida Córdoba</strong></h1>
-                <h4 class="text-muted text-center" style="background-color: rgba(255,255,255,0.7)">Ingresá al sistema</h4>
+                <h1 class="text-center" style="background-color: rgba(255,255,255,0.8)"><strong>Ficha Digital - Partida
+                        Córdoba</strong></h1>
+                <h4 class="text-muted text-center" style="background-color: rgba(255,255,255,0.7)">Ingresá al
+                    sistema</h4>
             </div>
             <div>
-                <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" class="form col-md-12 center-block">
+                <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>"
+                      class="form col-md-12 center-block">
                     <div class="form-group">
                         <input type="text" name="dni" id="dni" class="form-control input-lg" placeholder="DNI">
                         <input type="password" name="pwd" id="pwd" class="form-control input-lg" placeholder="Clave">
                     </div>
                     <div class="form-group" id="botones">
                         <button id="btn_entrar" class="btn btn-success btn-lg btn-block">Entrar</button>
-                        <button id="btn_firstTime" class="btn btn-danger btn-lg btn-block" type='button'>Es la primera vez que entro</button>
+                        <button id="btn_firstTime" class="btn btn-danger btn-lg btn-block" type='button' data-toggle="tooltip"
+                                title="Apretá acá si tenés el código que te vendió el secre" data-placement="auto">Es la primera vez que entro</button>
                     </div>
-                    <?php if(isset($response)) echo '<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button><strong>' . $response . "</strong></div>"; ?>
+                    <?php if (isset($response)) echo '<div class="alert alert-danger alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button><strong>' . $response . "</strong></div>"; ?>
                 </form>
             </div>
         </div>

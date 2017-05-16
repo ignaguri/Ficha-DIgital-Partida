@@ -12,7 +12,7 @@ class new_user
         $valido = $this->validar_datos($rtas);
         if ($valido[0]) {
             $insert = $mysql->insert_persona_full($rtas, $rol);
-            if($insert) $_SESSION['persona'] = $rtas['dni'];
+            if ($insert) $_SESSION['persona'] = $rtas['dni'];
             return [$insert, $rol];
         } else {
             return [false, "El campo " . $valido[1] + " no es válido"];
@@ -30,15 +30,14 @@ class new_user
         if (empty($datos['nombre']) or is_null($datos['nombre'])) {
             return ([false, 'nombre', 2]);
         }
-        if(!empty($datos['fechaNacimiento'])){
+        if (!empty($datos['fechaNacimiento'])) {
             $tempDate = explode('-', $datos['fechaNacimiento']);
             $today = new DateTime();
             $fechaNac = new DateTime($datos['fechaNacimiento']);
             if (!checkdate($tempDate[1], $tempDate[2], $tempDate[0]) and $fechaNac > $today) {
                 return ([false, 'fecha de nacimiento', 3]);
             }
-        }
-        else return ([false, 'fecha de nacimiento', 3]);
+        } else return ([false, 'fecha de nacimiento', 3]);
 
         if (empty($datos['mail']) or !filter_var($datos['mail'], FILTER_VALIDATE_EMAIL)) {
             return ([false, 'email', 4]);
@@ -49,9 +48,13 @@ class new_user
         if (empty($datos['sexo']) or is_null($datos['sexo']) and strlen($datos['sexo']) != 1) {
             return ([false, 'sexo', 7]);
         }
-        if (empty($datos['partidaHecha']) or !$this->partida_existe($datos['partidaHecha'], $datos['sexo'])) {
-            return ([false, 'partida hecha', 6]);
+        if ($datos['partidaHecha'] != 0) {
+            if (empty($datos['partidaHecha']) or !$this->partida_existe($datos['partidaHecha'], $datos['sexo'])) {
+                return ([false, 'partida hecha', 6]);
+            }
         }
+        else
+            $datos['partidaHecha'] = null;
         if (empty($datos['password']) or is_null($datos['password']) and strlen($datos['password']) < 6) { #contraseña de al menos 6 caracteres
             return ([false, 'contraseña', 8]);
         }
@@ -60,15 +63,24 @@ class new_user
         }
         return ([true]);
     }
+
     function partida_existe($nro, $sexo)
     {
         $mysql = New Mysql();
         return $mysql->check_partida($nro, $sexo);
     }
 
-    function new_rol_data($rol, $rtas){
+    function getDatosPadrino($dniAhijado)
+    {
+        $mysql = New Mysql();
+        $dniPadrino = $mysql->getDniPadrino($dniAhijado);
+        return $mysql->read_persona($dniPadrino);
+    }
+
+    function new_rol_data($rol, $rtas)
+    {
         $flag = false;
-        switch ($rol){
+        switch ($rol) {
             case 2:
                 $flag = $this->new_secre($rtas);
                 break;
@@ -84,30 +96,32 @@ class new_user
         return $flag;
     }
 
-    function new_secre($datos){
-        # $datos[0]: dni, [1]: observaciones
+    function new_secre($datos)
+    {
         $mysql = New Mysql();
-        if(empty($datos[1]))
+        if (empty($datos['comentarios']))
             $comment = "Sin observaciones";
         else
-            $comment = $datos[1];
-        return $mysql->insert_secre($datos[0],$comment);
+            $comment = $datos['comentarios'];
+        return $mysql->insert_secre($datos['dni'], $comment);
     }
-    function new_padrino($datos){
+
+    function new_padrino($datos)
+    {
         #$datos[0]: dni, [1-16]: respuestas
         $mysql = New Mysql();
-        foreach ($datos as $rta)
-        {
+        foreach ($datos as $rta) {
             if (empty($rta))
                 return false;
         }
         return $mysql->insert_padrino($datos);
     }
-    function new_partidista($datos){
+
+    function new_partidista($datos)
+    {
         #$datos[0]: dni, [1]: apodo, [2]: facultad, [3]: servicio de emergencia, [4-21]: respuestas
         $mysql = New Mysql();
-        foreach ($datos as $rta)
-        {
+        foreach ($datos as $rta) {
             if (empty($rta))
                 return false;
         }

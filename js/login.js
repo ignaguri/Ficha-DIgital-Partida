@@ -1,6 +1,10 @@
 //var body = document.getElementsByTagName("body")[0];
 $('body').load(document.getElementById('dni').focus());
 
+$(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+})
+
 //var btn_firstTime = document.getElementById("btn_firstTime");
 $('#btn_firstTime').click(function () {
     $('#dni').hide();

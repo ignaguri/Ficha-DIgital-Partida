@@ -67,8 +67,7 @@ if ($_POST) {
                  $('#modal_continuar').modal('show');});
                  </script>";
         } else {
-            #TODO: mejorar esta alerta
-            echo 'Falló el insert wa8 '. $inscrito[1];
+            echo '<script> alert("No se pudieron guardar los datos de la persona.\n"' . $inscrito[1].'); </script>';
         }
     }
 }
@@ -112,11 +111,14 @@ if ($_POST) {
                     <input type="tel" class="form-control" name="celular" id="celular"/>
                     <br class="clear"/>
                 </div>
-                <div class="form-group">
+                <?php if($_SESSION['rol'] == 4)
+                    echo '<input type="hidden" class="form-control" name="partidaHecha" id="partidaHecha" value="0"/>';
+                else
+                    echo '<div class="form-group">
                     <label for="partidaHecha">Partida hecha</label>
                     <input type="number" class="form-control" name="partidaHecha" id="partidaHecha" required/>
-                    <br class="clear"/>
-                </div>
+                    <br class="clear"/></div>';
+                ?>
                 <div class="form-group">
                     <label for="sexo">Sexo</label>
                     <input type="radio" class="radio-inline" name="sexo" value="0" id="sexo_0" required/>Femenino

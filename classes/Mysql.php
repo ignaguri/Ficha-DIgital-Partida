@@ -15,34 +15,81 @@ class Mysql
         }
     }
 
-    #TODO: falta eliminar la clave despues de usarla
+    function reconnect()
+    {
+        try {
+            $this->conn = new mysqli(DB_SERVER, DB_USER, DB_PASSWORD, DB_NAME);
+        } catch (Exception $e) {
+            echo 'Error: ', $e->getMessage();
+        }
+    }
+
+    function purgar()
+    {
+        do {
+            if ($res = $this->conn->store_result()) {
+                $res->fetch_all(MYSQLI_ASSOC);
+                $res->free();
+            }
+        } while ($this->conn->more_results() && $this->conn->next_result());
+    }
+
     function verify_Pass($pwd)
     {
-        $query = "SELECT idRol
+        $query1 = "SELECT idRol
 				FROM claves cl
 				WHERE cl.clave = ?
 				LIMIT 1";
 
-        if ($stmt = $this->conn->prepare($query)) {
-            $stmt->bind_param('s', $pwd);
-            $stmt->execute();
-            $stmt->bind_result($idRol);
+        $query2 = "DELETE FROM claves
+                   WHERE clave = ?";
 
-            if ($stmt->fetch()) {
-                $stmt->close();
-                unset($conn);
-                return $idRol;
-            } else {
-                unset($conn);
-                return null;
+        try {
+            mysqli_autocommit($this->conn, false);
+
+            if (!$stmt1 = $this->conn->prepare($query1)) {
+                print_r($this->conn->error);
+                return false;
             }
+            if (!$stmt2 = $this->conn->prepare($query2)) {
+                print_r($this->conn->error);
+                return false;
+            }
+            $stmt1->bind_param('s', $pwd);
+            $stmt2->bind_param('s', $pwd);
+
+            if ($stmt1->execute()) {
+                $stmt1->store_result();
+                $stmt1->bind_result($idRol);
+                $stmt1->fetch();
+                $stmt1->free_result();
+            } else {
+                print_r($this->conn->error);
+                return false;
+            }
+            if (!$stmt2->execute()) {
+                print_r($this->conn->error);
+                return false;
+            }
+
+            mysqli_commit($this->conn);
+            $stmt1->close();
+            $stmt2->close();
+            $this->purgar();
+            $this->conn->close();
+
+            return $idRol;
+        } catch (Exception $e) {
+            mysqli_rollback($this->conn);
+            $this->conn->close();
+            return null;
         }
 
     }
 
     function verify_Username_and_Pass($dni, $pwd)
     {
-
+        #TODO: permitir mas de un rol por persona
         $query = "SELECT idRol
 				FROM rolxuser rxu JOIN personas p ON rxu.dni = p.dni
 				WHERE p.dni = ? AND p.password = ?
@@ -55,10 +102,11 @@ class Mysql
 
             if ($stmt->fetch()) {
                 $stmt->close();
-                unset($conn);
+                $this->purgar();
+                $this->conn->close();
                 return $idRol;
             } else {
-                unset($conn);
+                $this->conn->close();
                 return null;
             }
         }
@@ -69,46 +117,109 @@ class Mysql
     function insert_persona_full($datos, $rol)
     {
         $flag = false;
-       try {
-            $query = "INSERT INTO personas (dni, apellido, nombre, fechaNacimiento, mail, celular, partidaHecha, sexo, password, domicilio)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)";
-            if ($stmt = $this->conn->prepare($query)) {
-                $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
-                $pwd_md5 = md5($datos['password']);
-                $sexo = $datos['sexo'] = 0 ? 'M' : 'H';
-                $stmt->bind_param('issssiisss', $datos['dni'], $datos['apellido'], $datos['nombre'], $fecha_parsed,
-                    $datos['mail'], $datos['celular'], $datos['partidaHecha'], $sexo,
-                    $pwd_md5, $datos['domicilio']);
+        #para Partidista
+        if ($rol == 4) {
+            try {
+                $query0 = "SELECT fechaNacimiento
+                          FROM personas
+                           WHERE dni = ?";
+                if ($stmt0 = $this->conn->prepare($query0)) {
+                    $stmt0->bind_param('i', $datos['dni']);
+                    $stmt0->execute();
+                    if ($stmt0->num_rows > 0) {
+                        throwException('Error. Persona ya registrada');
+                    } else {
+                        $stmt0->close();
+                        $this->purgar();
+                        $query = "UPDATE personas
+                                  SET apellido=?, nombre=?, fechaNacimiento=?,
+                                   mail=?, celular=?, partidaHecha=?, sexo=?, password=?, domicilio=?
+                                  WHERE dni = ?";
+                        if ($stmt = $this->conn->prepare($query)) {
+                            $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
+                            $pwd_md5 = md5($datos['password']);
+                            $sexo = $datos['sexo'] == 0 ? 'M' : 'H';
+                            $partida = $datos['partidaHecha'] == null ? null : $datos['partidaHecha'];
+                            $stmt->bind_param('ssssiisssi', $datos['apellido'], $datos['nombre'], $fecha_parsed,
+                                $datos['mail'], $datos['celular'], $partida, $sexo,
+                                $pwd_md5, $datos['domicilio'], $datos['dni']);
 
-                $stmt->execute();
-                if ($stmt->affected_rows > 0){
-                   // echo 'Exito!';
-                    $flag = true;
+                            $stmt->execute();
+                            if ($stmt->affected_rows >= 0) {
+                                $flag = true;
+                            } else {
+                                echo $stmt->error;
+                                $flag = false;
+                            }
+                        }
+                        #check. es omisible
+                        $query2 = "SELECT dni
+                                    FROM rolxuser
+                                    WHERE dni= ? AND idRol = ?
+                                    LIMIT 1";
+                        $stmt->close();
+                        $this->purgar();
+                        $this->conn->next_result();
+                        if ($stmt2 = $this->conn->prepare($query2)) {
+                            $stmt2->bind_param('ii', $datos['dni'], $rol);
+                            $stmt2->execute();
+                            if ($stmt2->get_result()) {
+                                $flag = true;
+                            } else {
+                                echo $stmt2->error;
+                                $flag = false;
+                            }
+                        }
+                        $stmt2->close();
+                        $this->purgar();
+                        $this->conn->close();
+                    }
                 }
-                else {
-                    echo $stmt->error;
-                    $flag = false;
-                }
+            } catch (Exception $e) {
+                echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
+                $this->conn->close();
+                $flag = false;
             }
-            $query2 = "INSERT INTO rolxuser (idRol, dni)
+        } else {
+            try {
+                $query = "INSERT INTO personas (dni, apellido, nombre, fechaNacimiento, mail, celular, partidaHecha, sexo, password, domicilio)
+                    VALUES (?,?,?,?,?,?,?,?,?,?)";
+                if ($stmt = $this->conn->prepare($query)) {
+                    $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
+                    $pwd_md5 = md5($datos['password']);
+                    $sexo = $datos['sexo'] = 0 ? 'M' : 'H';
+                    $stmt->bind_param('issssiisss', $datos['dni'], $datos['apellido'], $datos['nombre'], $fecha_parsed,
+                        $datos['mail'], $datos['celular'], $datos['partidaHecha'], $sexo,
+                        $pwd_md5, $datos['domicilio']);
+
+                    $stmt->execute();
+                    if ($stmt->affected_rows > 0) {
+                        // echo 'Exito!';
+                        $flag = true;
+                    } else {
+                        echo $stmt->error;
+                        $flag = false;
+                    }
+                }
+                $query2 = "INSERT INTO rolxuser (idRol, dni)
                         VALUES (?, ?)";
-            if ($stmt2 = $this->conn->prepare($query2)) {
-                $stmt2->bind_param('ii', $rol, $datos['dni']);
-                $stmt2->execute();
-                if ($stmt2->affected_rows > 0){
-                   // echo 'Exito!';
-                    $flag = true;
+                if ($stmt2 = $this->conn->prepare($query2)) {
+                    $stmt2->bind_param('ii', $rol, $datos['dni']);
+                    $stmt2->execute();
+                    if ($stmt2->affected_rows > 0) {
+                        // echo 'Exito!';
+                        $flag = true;
+                    } else {
+                        echo $stmt2->error;
+                        $flag = false;
+                    }
                 }
-                else {
-                    echo $stmt2->error;
-                    $flag = false;
-                }
+                $this->conn->close();
+            } catch (Exception $e) {
+                echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
+                $this->conn->close();
+                $flag = false;
             }
-            unset($conn);
-        } catch (Exception $e) {
-            echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
-            unset($conn);
-            $flag = false;
         }
         return $flag;
     }
@@ -126,17 +237,17 @@ class Mysql
                 //$stmt->bind_result($result);
 
                 if ($stmt->get_result()) {
-                    unset($conn);
+                    $this->conn->close();
                     return true;
                 } else {
-                    unset($conn);
+                    $this->conn->close();
                     return false;
                 }
             } else
                 echo $this->conn->error, ' asi es';
         } catch (Exception $e) {
             echo "Error " . $e->getMessage();
-            unset($conn);
+            $this->conn->close();
             return false;
         }
     }
@@ -144,129 +255,199 @@ class Mysql
     function insert_secre($dni, $comentario)
     {
         $query = "INSERT INTO secretariado(dni, comentarios)
-                  VALUES (:dni, :comentario)";
+                  VALUES (?,?)";
         try {
-            $stmt = $this->conn->prepare($query);
-            $stmt->bind_param(':dni', $dni);
-            $stmt->bind_param(':comentario', $comentario);
-
-            $stmt->execute();
+            if (!$stmt = $this->conn->prepare($query))
+                print_r($this->conn->error);
+            $stmt->bind_param('is', $dni, $comentario);
+            if (!$stmt->execute())
+                print_r($this->conn->error);
+            if ($stmt->affected_rows < 1) {
+                print_r($this->conn->error);
+                throwException("No se insertó ninguna row");
+            }
+            echo '<script>alert("Secre insertado");</script>';
+            $this->conn->close();
+            return true;
         } catch (Exception $e) {
             echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
             return false;
         }
-        unset($conn);
-        return true;
     }
 
     function insert_padrino($rtas)
     {
-        $query = "INSERT INTO padrino(`dni`,`prepartida1`,`prepartida2`,`prepartida3`,`prepartida4`,`partida1`,
-                    `partida2`,`personalidad1`,`personalidad2`,`ambiente1`,`ambiente2`,`ambiente3`,`ambiente4`,
-                    `ambiente5`,`ambiente6`,`ambiente7`,`religiosidad1`,`religiosidad2`)
-                  VALUES(:dni ,:prepartida1 ,:prepartida2 ,:prepartida3 ,:prepartida4 ,
-                    :partida1 ,:partida2 ,:personalidad1 ,:personalidad2 ,:ambiente1 ,
-                    :ambiente2 ,:ambiente3 ,:ambiente4 ,:ambiente5 ,:ambiente6 ,:ambiente7 ,
-                    :religiosidad1 ,:religiosidad2 )";
-
         try {
-            $stmt = $this->conn->prepare($query);
-            $stmt->bind_param(':dni', $rtas[0]);
-            $stmt->bind_param(':prepartida1', $rtas[1]);
-            $stmt->bind_param(':prepartida2', $rtas[2]);
-            $stmt->bind_param(':prepartida3', $rtas[3]);
-            $stmt->bind_param(':prepartida4', $rtas[4]);
-            $stmt->bind_param(':partida1', $rtas[5]);
-            $stmt->bind_param(':partida2', $rtas[6]);
-            $stmt->bind_param(':personalidad1', $rtas[7]);
-            $stmt->bind_param(':personalidad2', $rtas[8]);
-            $stmt->bind_param(':ambiente1', $rtas[9]);
-            $stmt->bind_param(':ambiente2', $rtas[10]);
-            $stmt->bind_param(':ambiente3', $rtas[11]);
-            $stmt->bind_param(':ambiente4', $rtas[12]);
-            $stmt->bind_param(':ambiente5', $rtas[13]);
-            $stmt->bind_param(':ambiente6', $rtas[14]);
-            $stmt->bind_param(':ambiente7', $rtas[15]);
-            $stmt->bind_param(':religiosidad1', $rtas[16]);
-            $stmt->bind_param(':religiosidad2', $rtas[17]);
+            $query1 = "INSERT INTO personas(dni, apellido, nombre)
+                       VALUES (?, ?, ?)";
+
+            $query2 = "INSERT INTO padrino(dni,dniAhijado,prepartida1,prepartida2,prepartida3,prepartida4,partida1,
+                    partida2,personalidad1,personalidad2,ambiente1,ambiente2,ambiente3,ambiente4,
+                    ambiente5,ambiente6,ambiente7,religiosidad1,religiosidad2)
+                  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+            $query3 = "INSERT INTO rolxuser(idRol, dni)
+                       VALUES (4, ?)";
 
 
-            $stmt->execute();
+            mysqli_autocommit($this->conn, false);
+
+            if (!$stmt1 = $this->conn->prepare($query1)) {
+                print_r($this->conn->error);
+                return false;
+            }
+            if (!$stmt2 = $this->conn->prepare($query2)) {
+                print_r($this->conn->error);
+                return false;
+            }
+            if (!$stmt3 = $this->conn->prepare($query3)) {
+                print_r($this->conn->error);
+                return false;
+            }
+
+            $stmt1->bind_param('iss', $rtas['dni_ahijado'], $rtas['apellidoAhijado'], $rtas['nombreAhijado']);
+
+            $stmt2->bind_param('iisssssssssssssssss', $rtas['dni'], $rtas['dni_ahijado'], $rtas['prepartida1'],
+                $rtas['prepartida2'], $rtas['prepartida3'], $rtas['prepartida4'], $rtas['partida1'], $rtas['partida2'],
+                $rtas['personalidad1'], $rtas['personalidad2'], $rtas['ambiente1'], $rtas['ambiente2'], $rtas['ambiente3'],
+                $rtas['ambiente4'], $rtas['ambiente5'], $rtas['ambiente6'], $rtas['ambiente7'],
+                $rtas['religiosidad1'], $rtas['religiosidad2']);
+
+            $stmt3->bind_param('i', $rtas['dni_ahijado']);
+
+            if (!$stmt1->execute() || $stmt1->affected_rows < 1) {
+                print_r($this->conn->error);
+                return false;
+            }
+            if (!$stmt2->execute() || $stmt2->affected_rows < 1) {
+                print_r($this->conn->error);
+                return false;
+            }
+            if (!$stmt3->execute() || $stmt3->affected_rows < 1) {
+                print_r($this->conn->error);
+                return false;
+            }
+
+            mysqli_commit($this->conn);
+            $stmt1->close();
+            $stmt2->close();
+            $this->purgar();
+            $this->conn->close();
+
+            return true;
         } catch (Exception $e) {
-            echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
+            mysqli_rollback($this->conn);
+            $this->conn->close();
             return false;
         }
-        unset($conn);
-        return true;
     }
 
     function insert_partidista($rtas)
     {
-        $query = "INSERT INTO partidista (`dni`,`apodo`,`facultad`,`serv_emergencia`,`aspecto_personal1`,
-                    `aspecto_personal2`,`aspecto_personal3`,`aspecto_personal4`,`aspecto_personal5`,
-                    `relacion_con_demas1`,`relacion_con_demas2`,`relacion_con_demas3`,`relacion_con_demas4`,
-                    `relacion_con_demas5`,`relacion_con_demas6`,`relacion_con_dios1`,`relacion_con_dios2`,
-                    `relacion_con_dios3`,`relacion_con_dios4`,`relacion_con_dios5`,`relacion_con_dios6`,
-                    `relacion_con_dios7`)
-                  VALUES ( :dni , :apodo , :facultad , :serv_emergencia , :aspecto_personal1 ,
-                     :aspecto_personal2 , :aspecto_personal3 , :aspecto_personal4 , :aspecto_personal5 ,
-                     :relacion_con_demas1 , :relacion_con_demas2 , :relacion_con_demas3 , :relacion_con_demas4 ,
-                     :relacion_con_demas5 , :relacion_con_demas6 , :relacion_con_dios1 , :relacion_con_dios2 ,
-                     :relacion_con_dios3 , :relacion_con_dios4 , :relacion_con_dios5 , :relacion_con_dios6 , :relacion_con_dios7 )";
+        $query = "INSERT INTO partidista (dni,apodo,facultad,serv_emergencia,aspecto_personal1,
+                    aspecto_personal2,aspecto_personal3,aspecto_personal4,aspecto_personal5,
+                    relacion_con_demas1,relacion_con_demas2,relacion_con_demas3,relacion_con_demas4,
+                    relacion_con_demas5,relacion_con_demas6,relacion_con_dios1,relacion_con_dios2,
+                    relacion_con_dios3,relacion_con_dios4,relacion_con_dios5,relacion_con_dios6,
+                    relacion_con_dios7)
+                  VALUES ( ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? )";
 
         try {
             $stmt = $this->conn->prepare($query);
-            $stmt->bind_param(':dni', $rtas[0]);
-            $stmt->bind_param(':apodo', $rtas[1]);
-            $stmt->bind_param(':facultad', $rtas[2]);
-            $stmt->bind_param(':serv_emergencia', $rtas[3]);
-            $stmt->bind_param(':aspecto_personal1', $rtas[4]);
-            $stmt->bind_param(':aspecto_personal2', $rtas[5]);
-            $stmt->bind_param(':aspecto_personal3', $rtas[6]);
-            $stmt->bind_param(':aspecto_personal4', $rtas[7]);
-            $stmt->bind_param(':aspecto_personal5', $rtas[8]);
-            $stmt->bind_param(':relacion_con_demas1', $rtas[9]);
-            $stmt->bind_param(':relacion_con_demas2', $rtas[10]);
-            $stmt->bind_param(':relacion_con_demas3', $rtas[11]);
-            $stmt->bind_param(':relacion_con_demas4', $rtas[12]);
-            $stmt->bind_param(':relacion_con_demas5', $rtas[13]);
-            $stmt->bind_param(':relacion_con_demas6', $rtas[14]);
-            $stmt->bind_param(':relacion_con_dios1', $rtas[15]);
-            $stmt->bind_param(':relacion_con_dios2', $rtas[16]);
-            $stmt->bind_param(':relacion_con_dios3', $rtas[17]);
-            $stmt->bind_param(':relacion_con_dios4', $rtas[18]);
-            $stmt->bind_param(':relacion_con_dios5', $rtas[19]);
-            $stmt->bind_param(':relacion_con_dios6', $rtas[20]);
-            $stmt->bind_param(':relacion_con_dios7', $rtas[21]);
+            $stmt->bind_param('isssssssssssssssssssss', $rtas['dni'], $rtas['apodo'], $rtas['facultad'],
+                $rtas['serv_emergencia'], $rtas['aspecto_personal1'], $rtas['aspecto_personal2'],
+                $rtas['aspecto_personal3'], $rtas['aspecto_personal4'], $rtas['aspecto_personal5'],
+                $rtas['relacion_con_demas1'], $rtas['relacion_con_demas2'], $rtas['relacion_con_demas3'],
+                $rtas['relacion_con_demas4'], $rtas['relacion_con_demas5'], $rtas['relacion_con_demas6'],
+                $rtas['relacion_con_dios1'], $rtas['relacion_con_dios2'], $rtas['relacion_con_dios3'],
+                $rtas['relacion_con_dios4'], $rtas['relacion_con_dios5'], $rtas['relacion_con_dios6'], $rtas['relacion_con_dios7']);
 
             $stmt->execute();
+            if ($stmt->affected_rows > 0) {
+                $this->conn->close();
+                return true;
+            }
         } catch (Exception $e) {
             echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
             return false;
         }
-        unset($conn);
-        return true;
+        $this->conn->close();
+        return false;
     }
 
-    #testing purposes
     function read_persona($dni)
     {
-        $query = "SELECT *
-				FROM personas p
-				WHERE p.dni = ?";
+        $this->reconnect();
+        $query = "SELECT dni, apellido, nombre
+				FROM personas
+				WHERE dni = $dni";
 
+        if ($res = $this->conn->query($query)) {
+            $persona = $res->fetch_row();
+            $this->purgar();
+            $this->conn->close();
+            return $persona;
+        } else {
+            $this->conn->close();
+            return null;
+        }
+
+    }
+
+    function getDniPadrino($dniAhijado)
+    {
+        $this->reconnect();
+        $query = "SELECT dni
+				FROM padrino
+				WHERE dniAhijado = $dniAhijado";
+
+        if ($res = $this->conn->query($query)) {
+            $dniPadrino = $res->fetch_row();
+            $this->purgar();
+            $this->conn->close();
+            return $dniPadrino[0];
+        } else {
+            $this->conn->close();
+            return null;
+        }
+    }
+
+    function datosCompletos($dni, $idRol)
+    {
+        $this->reconnect();
+        switch ($idRol) {
+            case 1:
+                return true;
+                break;
+            case 2:
+                $tabla = 'secretariado';
+                $cantIdeal = 2;
+                break;
+            case 3:
+                $tabla = 'padrino';
+                $cantIdeal = 19;
+                break;
+            case 4:
+                $tabla = 'partidista';
+                $cantIdeal = 22;
+                break;
+            default:
+                break;
+        }
+
+        $query = "SELECT * FROM $tabla WHERE dni = ?";
         if ($stmt = $this->conn->prepare($query)) {
-            $stmt->bind_param('s', $dni);
+            $stmt->bind_param('i', $dni);
             $stmt->execute();
-            $stmt->bind_result($persona);
-
-            if ($stmt->fetch()) {
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0 && $result->field_count == $cantIdeal) {
                 $stmt->close();
-                unset($conn);
-                return $persona;
+                $this->purgar();
+                $this->conn->close();
+                return true;
             } else {
-                unset($conn);
-                return null;
+                $this->conn->close();
+                return false;
             }
         }
     }

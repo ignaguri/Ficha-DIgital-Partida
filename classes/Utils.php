@@ -898,6 +898,9 @@ class Utils {
             case 'rol_padrino':
                 $datos = self::array_clean($data, array(
                     'dni' => 'integer',
+                    'dni_ahijado' => 'integer',
+                    'apellidoAhijado' => 'string',
+                    'nombreAhijado' => 'string',
                     'prepartida1' => 'string',
                     'prepartida2' => 'string',
                     'prepartida3' => 'string',

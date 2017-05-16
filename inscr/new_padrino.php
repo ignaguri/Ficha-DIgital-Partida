@@ -36,7 +36,6 @@ $utils = new Utils();
 if (isset($_GET['status']) && $_GET['status'] == 'loggedout') {
     $membership->log_User_Out();
 }
-#TODO: asociar ahijado previamente
 
 if ($_POST && $_POST['persona'] == 'rol_padrino') {
 
@@ -44,7 +43,7 @@ if ($_POST && $_POST['persona'] == 'rol_padrino') {
     $flag = $new_user->new_rol_data(3, $datos_rol);
 
     if ($flag)
-        $membership->redirectUser($_SESSION['rol']);
+        $membership->redirectNewUser($_SESSION['rol']);
 }
 
 ?>
@@ -62,17 +61,20 @@ if ($_POST && $_POST['persona'] == 'rol_padrino') {
                 </div>
                 <div class="form-group">
                     <label for="dni">Tu DNI</label>
-                    <input class="form-control" type="text" name="dni" id="dni" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'xx.xxx.xxx' ?>" readonly/>
+                    <input class="form-control" type="text" name="dni" id="dni" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'Si estas viendo esto, hubo un error' ?>" value="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: -1 ?>" readonly/>
                     <br class="clear"/>
                 </div>
-                <div>
-                    <label for="sel_ahijados">Seleccioná tu ahijado</label>
-                    <select id="sel_ahijados" class="form-control" required>
-                        <option>Cargar</option>
-                        <option>ahijados</option>
-                        <option>por</option>
-                        <option>php</option>
-                    </select>
+                <div class="form-group">
+                    <h2>Sobre tu ahijado</h2>
+                    <label for="dniAhijado">DNI de tu ahijado</label>
+                    <input class="form-control" type="text" name="dni_ahijado" id="dni_ahijado" required/>
+                    <br class="clear"/>
+                    <label for="apellidoAhijado">Apellido de tu ahijado</label>
+                    <input class="form-control" type="text" name="apellidoAhijado" id="apellidoAhijado" required/>
+                    <br class="clear"/>
+                    <label for="nombreAhijado">Nombre de tu ahijado</label>
+                    <input class="form-control" type="text" name="nombreAhijado" id="nombreAhijado" required/>
+                    <br class="clear"/>
                 </div>
                 <div class="form-group">
                     <h2>Prepartida</h2>
@@ -149,7 +151,7 @@ if ($_POST && $_POST['persona'] == 'rol_padrino') {
     </div>
 </div>
 
-<a id="logout" href="login.php?status=loggedout">Salir</a>
+<a id="logout" href="../login.php?status=loggedout">Salir</a>
 
 </body>
 </html>
