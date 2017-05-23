@@ -70,7 +70,6 @@ $("#form_persona").submit(function(event){
 
 });
 
-
 /* leer variables php
  var val = "<?php echo $var ?>";
  */

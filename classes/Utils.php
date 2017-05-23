@@ -885,8 +885,8 @@ class Utils {
                     'celular' => 'integer',
                     'partidaHecha' => 'integer',
                     'sexo' => 'integer',
-                    'password' => 'string|trim',
-                    'domicilio' => 'string'
+                    'domicilio' => 'string',
+                    'password' => 'string|trim'
                 ));
                 break;
             case 'rol_secre':

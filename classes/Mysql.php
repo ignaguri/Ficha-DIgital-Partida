@@ -114,9 +114,8 @@ class Mysql
     }
 
     #TODO: hacerlo transaccion
-    function insert_persona_full($datos, $rol)
+    function insert_persona_full($datos, $rol, $foto_path)
     {
-        $flag = false;
         #para Partidista
         if ($rol == 4) {
             try {
@@ -133,16 +132,16 @@ class Mysql
                         $this->purgar();
                         $query = "UPDATE personas
                                   SET apellido=?, nombre=?, fechaNacimiento=?,
-                                   mail=?, celular=?, partidaHecha=?, sexo=?, password=?, domicilio=?
+                                   mail=?, celular=?, partidaHecha=?, sexo=?, password=?, domicilio=?, foto_carnet=?
                                   WHERE dni = ?";
                         if ($stmt = $this->conn->prepare($query)) {
                             $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
                             $pwd_md5 = md5($datos['password']);
                             $sexo = $datos['sexo'] == 0 ? 'M' : 'H';
                             $partida = $datos['partidaHecha'] == null ? null : $datos['partidaHecha'];
-                            $stmt->bind_param('ssssiisssi', $datos['apellido'], $datos['nombre'], $fecha_parsed,
+                            $stmt->bind_param('ssssiissssi', $datos['apellido'], $datos['nombre'], $fecha_parsed,
                                 $datos['mail'], $datos['celular'], $partida, $sexo,
-                                $pwd_md5, $datos['domicilio'], $datos['dni']);
+                                $pwd_md5, $datos['domicilio'],$foto_path, $datos['dni']);
 
                             $stmt->execute();
                             if ($stmt->affected_rows >= 0) {
@@ -182,15 +181,54 @@ class Mysql
             }
         } else {
             try {
-                $query = "INSERT INTO personas (dni, apellido, nombre, fechaNacimiento, mail, celular, partidaHecha, sexo, password, domicilio)
+                $query = "INSERT INTO personas (dni, apellido, nombre, fechaNacimiento, mail, celular, partidaHecha, sexo, domicilio, foto_carnet, password)
                     VALUES (?,?,?,?,?,?,?,?,?,?)";
-                if ($stmt = $this->conn->prepare($query)) {
+                $query2 = "INSERT INTO rolxuser (idRol, dni)
+                        VALUES (?, ?)";
+
+                mysqli_autocommit($this->conn, false);
+
+                if (!$stmt1 = $this->conn->prepare($query)) {
+                    print_r($this->conn->error);
+                    return false;
+                }
+                if (!$stmt2 = $this->conn->prepare($query2)) {
+                    print_r($this->conn->error);
+                    return false;
+                }
+
+                $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
+                $pwd_md5 = md5($datos['password']);
+                $sexo = $datos['sexo'] = 0 ? 'M' : 'H';
+                $stmt1->bind_param('issssiissss', $datos['dni'], $datos['apellido'], $datos['nombre'], $fecha_parsed,
+                    $datos['mail'], $datos['celular'], $datos['partidaHecha'], $sexo,
+                    $datos['domicilio'], $foto_path, $pwd_md5);
+
+                $stmt2->bind_param('ii', $rol, $datos['dni']);
+
+                if (!$stmt1->execute() || $stmt1->affected_rows < 1) {
+                    print_r($this->conn->error);
+                    return false;
+                }
+                if (!$stmt2->execute() || $stmt2->affected_rows < 1) {
+                    print_r($this->conn->error);
+                    return false;
+                }
+
+                mysqli_commit($this->conn);
+                $stmt1->close();
+                $stmt2->close();
+                $this->purgar();
+                $this->conn->close();
+
+                return true;
+                /*if ($stmt = $this->conn->prepare($query)) {
                     $fecha_parsed = date_create($datos['fechaNacimiento'])->format('Y-m-d');
                     $pwd_md5 = md5($datos['password']);
                     $sexo = $datos['sexo'] = 0 ? 'M' : 'H';
-                    $stmt->bind_param('issssiisss', $datos['dni'], $datos['apellido'], $datos['nombre'], $fecha_parsed,
+                    $stmt->bind_param('issssiissss', $datos['dni'], $datos['apellido'], $datos['nombre'], $fecha_parsed,
                         $datos['mail'], $datos['celular'], $datos['partidaHecha'], $sexo,
-                        $pwd_md5, $datos['domicilio']);
+                        $datos['domicilio'], $foto_path, $pwd_md5);
 
                     $stmt->execute();
                     if ($stmt->affected_rows > 0) {
@@ -201,8 +239,7 @@ class Mysql
                         $flag = false;
                     }
                 }
-                $query2 = "INSERT INTO rolxuser (idRol, dni)
-                        VALUES (?, ?)";
+
                 if ($stmt2 = $this->conn->prepare($query2)) {
                     $stmt2->bind_param('ii', $rol, $datos['dni']);
                     $stmt2->execute();
@@ -214,14 +251,14 @@ class Mysql
                         $flag = false;
                     }
                 }
-                $this->conn->close();
+                $this->conn->close();*/
             } catch (Exception $e) {
                 echo "ERROR: No se pudo agregar a la persona" . $e->getMessage();
+                mysqli_rollback($this->conn);
                 $this->conn->close();
-                $flag = false;
+                return false;
             }
         }
-        return $flag;
     }
 
     function check_partida($nro, $sexo)
@@ -449,6 +486,49 @@ class Mysql
                 $this->conn->close();
                 return false;
             }
+        }
+    }
+
+    function uploadFotoCarnet($dni, $target_file){
+        $query = "UPDATE personas
+                  SET foto_carnet = ?
+                  WHERE dni= ?";
+        try {
+            if (!$stmt = $this->conn->prepare($query))
+                print_r($this->conn->error);
+            $stmt->bind_param('si', $target_file, $dni);
+            if (!$stmt->execute())
+                print_r($this->conn->error);
+            if ($stmt->affected_rows < 1) {
+                print_r($this->conn->error);
+                throwException("No se insertó ninguna row");
+            }
+            $this->conn->close();
+            return true;
+        } catch (Exception $e) {
+            echo "ERROR: No se pudo subir la foto" . $e->getMessage();
+            return false;
+        }
+    }
+    function uploadFotoDNI($dni, $target_file){
+        $query = "UPDATE personas
+                  SET foto_dni = ?
+                  WHERE dni= ?";
+        try {
+            if (!$stmt = $this->conn->prepare($query))
+                print_r($this->conn->error);
+            $stmt->bind_param('si', $target_file, $dni);
+            if (!$stmt->execute())
+                print_r($this->conn->error);
+            if ($stmt->affected_rows < 1) {
+                print_r($this->conn->error);
+                throwException("No se insertó ninguna row");
+            }
+            $this->conn->close();
+            return true;
+        } catch (Exception $e) {
+            echo "ERROR: No se pudo subir la foto" . $e->getMessage();
+            return false;
         }
     }
 }

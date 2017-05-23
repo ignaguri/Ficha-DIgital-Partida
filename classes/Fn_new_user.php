@@ -1,22 +1,33 @@
 <?php
 require_once 'Mysql.php';
+require_once 'PhotoUploader.php';
 date_default_timezone_set('America/Argentina/Cordoba');
 
 class new_user
 {
 
-    function new_persona_full($rol, $rtas)
+    function new_persona_full($rol, $rtas, $foto)
     {
         $_SESSION['new_user'] = false;
         $mysql = New Mysql();
+        $uploader = new PhotoUploader();
         $valido = $this->validar_datos($rtas);
         if ($valido[0]) {
-            $insert = $mysql->insert_persona_full($rtas, $rol);
-            if ($insert) $_SESSION['persona'] = $rtas['dni'];
-            return [$insert, $rol];
+            $se_subio = $uploader->uploadImg($foto);
+            if ($se_subio[0]) {
+                $insert = $mysql->insert_persona_full($rtas, $rol, $se_subio[1]);
+            } else {
+                return false;
+            }
+            // $foto_upl = $mysql->uploadFotoCarnet($rtas['dni'], $foto_path);
+            if ($insert) {
+                $_SESSION['persona'] = $rtas['dni'];
+                return [$insert, $rol];
+            }
         } else {
             return [false, "El campo " . $valido[1] + " no es válido"];
         }
+
     }
 
     function validar_datos($datos)
@@ -52,8 +63,7 @@ class new_user
             if (empty($datos['partidaHecha']) or !$this->partida_existe($datos['partidaHecha'], $datos['sexo'])) {
                 return ([false, 'partida hecha', 6]);
             }
-        }
-        else
+        } else
             $datos['partidaHecha'] = null;
         if (empty($datos['password']) or is_null($datos['password']) and strlen($datos['password']) < 6) { #contraseña de al menos 6 caracteres
             return ([false, 'contraseña', 8]);
