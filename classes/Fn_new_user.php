@@ -5,7 +5,6 @@ date_default_timezone_set('America/Argentina/Cordoba');
 
 class new_user
 {
-
     function new_persona_full($rol, $rtas, $foto)
     {
         $_SESSION['new_user'] = false;
@@ -13,7 +12,7 @@ class new_user
         $uploader = new PhotoUploader();
         $valido = $this->validar_datos($rtas);
         if ($valido[0]) {
-            $se_subio = $uploader->uploadImg($foto);
+            $se_subio = $uploader->uploadImg($foto, $rtas['dni']);
             if ($se_subio[0]) {
                 $insert = $mysql->insert_persona_full($rtas, $rol, $se_subio[1]);
             } else {
@@ -87,6 +86,11 @@ class new_user
         return $mysql->read_persona($dniPadrino);
     }
 
+    function getPartidasAvailable($dniAhijado)
+    {
+        $mysql = New Mysql();
+        return $mysql->checkPartidaDisponible($dniAhijado);
+    }
     function new_rol_data($rol, $rtas)
     {
         $flag = false;

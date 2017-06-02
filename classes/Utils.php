@@ -923,6 +923,7 @@ class Utils {
             case 'rol_partidista':
                 $datos = self::array_clean($data, array(
                     'dni' => 'integer',
+                    'partida' => 'integer',
                     'apodo' => 'string|trim',
                     'facultad' => 'string|trim',
                     'serv_emergencia' => 'string|trim',

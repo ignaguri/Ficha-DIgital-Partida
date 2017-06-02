@@ -36,9 +36,11 @@ $utils = new Utils();
 if (isset($_GET['status']) && $_GET['status'] == 'loggedout') {
     $membership->log_User_Out();
 }
-
+#TODO: poner facu/colegio y agregar carrera. hacerlas cargar desde BD
+#TODO: subir dni front y back
 $datosPadrino = $new_user->getDatosPadrino($_SESSION['persona']);
 
+$partidasDisponible = $new_user->getPartidasAvailable($_SESSION['persona']);
 
 if ($_POST && $_POST['persona'] == 'rol_partidista') {
 
@@ -68,6 +70,18 @@ if ($_POST && $_POST['persona'] == 'rol_partidista') {
                     <h2>Tus datos</h2>
                     <label for="dni">DNI</label>
                     <input class="form-control" type="text" name="dni" id="dni" placeholder="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: 'Si estas viendo esto, hubo un error' ?>" value="<?php echo isset($_SESSION['persona'])? $_SESSION['persona']: -1 ?>" readonly/>
+                    <br class="clear"/>
+                </div>
+                <div class="form-group">
+                    <label for="facultad">Partida a la que te inscribís</label>
+                    <select id="partida" name="partida" class="form-control" required>
+                        <option value="">No seleccionado</option>
+                        <?php
+                            $partidaNro= $partidasDisponible[0];
+                            $partidaSexo = $partidasDisponible[1] == "M"? "mujeres":"varones";
+                            echo ('<option value='.$partidaNro.'>'.$partidaNro.' de '. $partidaSexo .'</option>');
+                        ?>
+                    </select>
                     <br class="clear"/>
                 </div>
                 <div class="form-group">

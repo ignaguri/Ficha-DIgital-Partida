@@ -70,7 +70,7 @@ if ($_POST) {
                  $('#modal_continuar').modal('show');});
                  </script>";
         } else {
-            echo '<script> alert("No se pudieron guardar los datos de la persona.\n"' . $inscrito[1] . '); </script>';
+            echo "No se pudieron guardar los datos de la persona.\n' . $inscrito[1]";
         }
     }
 }
@@ -87,6 +87,7 @@ if ($_POST) {
                     <br/>
                     <h1 style="background-color: white;">
                         <small>Ingresá tus datos personales</small>
+                        <h4><small>*Todos los campos son obligatorios</small></h4>
                     </h1>
                 </div>
                 <div class="form-group">
@@ -118,7 +119,7 @@ if ($_POST) {
                 </div>
                 <div class="form-group">
                     <label for="celular">Celular</label>
-                    <input type="tel" class="form-control" name="celular" id="celular"/>
+                    <input type="tel" class="form-control" name="celular" id="celular" required/>
                     <br class="clear"/>
                 </div>
                 <?php if (!isset($_SESSION['rol']) or $_SESSION['rol'] == 4)

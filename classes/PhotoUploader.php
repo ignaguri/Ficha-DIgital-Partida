@@ -4,14 +4,14 @@ class PhotoUploader
 {
     private $max_img_size = 2000000;
 
-    function uploadImg($file, $target_dir = "./fotos_carnet/")
+    function uploadImg($file, $dni ,$target_dir = "./fotos_carnet/")
     {
         $file_name = $file['name'];
         $file_type_browser = $file['type'];
         $file_size = $file['size'];
         $file_tmp_name = $file['tmp_name'];
         $file_error = $file['error'];
-        $target_file = $target_dir . basename($file_name);
+        $target_file = $target_dir . 'foto_carnet_'. $dni . '.' .explode('.', $file_name)[1];
         $file_type = pathinfo($target_file, PATHINFO_EXTENSION);
 
         if (!$this->checkImg($file_tmp_name))

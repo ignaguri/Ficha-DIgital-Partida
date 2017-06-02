@@ -36,7 +36,7 @@ $utils = new Utils();
 if (isset($_GET['status']) && $_GET['status'] == 'loggedout') {
     $membership->log_User_Out();
 }
-
+#TODO: fue presentado anteriormente? Aggiornar con el nuevo formulario
 if ($_POST && $_POST['persona'] == 'rol_padrino') {
 
     $datos_rol = $utils->sanitizeData('rol_padrino', $_POST);
